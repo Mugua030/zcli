@@ -1,0 +1,3 @@
+# zcli
+
+    just a tool
