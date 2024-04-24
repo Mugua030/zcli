@@ -1,5 +1,7 @@
 use clap::Parser;
-use zcli::{process_csv, process_genpwd, Opts, SubCommand};
+use zcli::{
+    process_csv, process_decode, process_encode, process_genpwd, Base64SubCommand, Opts, SubCommand,
+};
 
 // zcli csv -i input.csv -o output.json --header -d ','
 
@@ -25,6 +27,16 @@ fn main() -> anyhow::Result<()> {
                 opts.symbols,
             )?;
         }
+        SubCommand::Base64(subcmd) => match subcmd {
+            Base64SubCommand::Encode(opts) => {
+                //println!("encode: {:?}", opts);
+                process_encode(&opts.input, opts.format)?;
+            }
+            Base64SubCommand::Decode(opts) => {
+                //println!("decode: {:?}", opts);
+                process_decode(&opts.input, opts.format)?;
+            }
+        },
     }
     Ok(())
 }

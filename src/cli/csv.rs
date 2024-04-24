@@ -1,34 +1,7 @@
+use super::verify_input_file;
+
 use clap::Parser;
-use std::{fmt, path::Path, str::FromStr};
-
-#[derive(Debug, Parser)]
-#[command(name = "zcli", version, author, about, long_about = None)]
-pub struct Opts {
-    #[command(subcommand)]
-    pub cmd: SubCommand,
-}
-
-#[derive(Debug, Parser)]
-pub enum SubCommand {
-    #[command(name = "csv", about = "show csv")]
-    Csv(CsvOpts),
-    #[command(name = "genpwd", about = "generate a random password")]
-    GenPWD(GenPWDOpts),
-}
-
-#[derive(Debug, Parser)]
-pub struct GenPWDOpts {
-    #[arg(short, long, default_value_t = 16)]
-    pub length: u8,
-    #[arg(long)]
-    pub no_upper_case: bool,
-    #[arg(long, default_value_t = true)]
-    pub lower_case: bool,
-    #[arg(long, default_value_t = true)]
-    pub numbers: bool,
-    #[arg(long, default_value_t = true)]
-    pub symbols: bool,
-}
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Parser)]
 pub struct CsvOpts {
@@ -39,22 +12,12 @@ pub struct CsvOpts {
     // default_value_t =>
     #[arg(short, long)]
     pub output: Option<String>,
-
     #[arg(long, value_parser = parse_format, default_value = "json")]
     pub format: OutputFormat,
-
     #[arg(short, long, default_value_t = ',')]
     pub delimiter: char,
     #[arg(long, default_value_t = true)]
     pub header: bool,
-}
-
-fn verify_input_file(filename: &str) -> Result<String, &'static str> {
-    if Path::new(filename).exists() {
-        Ok(filename.into())
-    } else {
-        Err("File does not exist")
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
