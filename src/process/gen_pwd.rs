@@ -11,7 +11,7 @@ pub fn process_genpwd(
     lower: bool,
     number: bool,
     symbol: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
     let mut rng = rand::thread_rng();
     let mut password = Vec::new();
     let mut chars = Vec::new();
@@ -43,6 +43,5 @@ pub fn process_genpwd(
     }
     password.shuffle(&mut rng);
 
-    println!("{}", String::from_utf8(password)?);
-    Ok(())
+    Ok(String::from_utf8(password)?)
 }
