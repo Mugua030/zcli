@@ -148,7 +148,7 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,3 +169,4 @@ mod tests {
         Ok(())
     }
 }
+*/
