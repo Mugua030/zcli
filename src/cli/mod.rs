@@ -3,6 +3,7 @@ mod csv;
 mod genpwd;
 mod http;
 mod text;
+use crate::CmdExecutor;
 
 pub use self::{
     base64::{Base64Format, Base64SubCommand},
@@ -33,6 +34,30 @@ pub enum SubCommand {
     Text(TextSubCommand),
     #[command(subcommand)]
     Http(HttpSubCommand),
+}
+
+impl CmdExecutor for SubCommand {
+    async fn execute(self) -> anyhow::Result<()> {
+        match self {
+            SubCommand::Csv(opts) => {
+                opts.execute().await?;
+            }
+            SubCommand::Base64(opts) => {
+                opts.execute().await?;
+            }
+            SubCommand::GenPWD(opts) => {
+                opts.execute().await?;
+            }
+            SubCommand::Http(opts) => {
+                opts.execute().await?;
+            }
+            SubCommand::Text(opts) => {
+                opts.execute().await?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn verify_file(filename: &str) -> Result<String, &'static str> {

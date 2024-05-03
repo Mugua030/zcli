@@ -1,4 +1,5 @@
 use super::verify_file;
+use crate::CmdExecutor;
 use anyhow::Ok;
 use clap::Parser;
 use std::{fmt, str::FromStr};
@@ -59,6 +60,27 @@ impl From<Base64Format> for &'static str {
         match format {
             Base64Format::Standard => "standard",
             Base64Format::UrlSafe => "urlsafe",
+        }
+    }
+}
+
+impl CmdExecutor for Base64EncodeOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        todo!()
+    }
+}
+
+impl CmdExecutor for Base64DecodeOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        todo!()
+    }
+}
+
+impl CmdExecutor for Base64SubCommand {
+    async fn execute(self) -> anyhow::Result<()> {
+        match self {
+            Base64SubCommand::Encode(opts) => opts.execute().await,
+            Base64SubCommand::Decode(opts) => opts.execute().await,
         }
     }
 }
