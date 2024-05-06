@@ -1,5 +1,5 @@
 use crate::Base64Format;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use base64::{
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
     Engine as _,
@@ -19,6 +19,37 @@ pub fn process_encode(input: &str, format: Base64Format) -> anyhow::Result<()> {
 
     println!("{}", encoded);
     Ok(())
+}
+
+pub fn process_encode_data(data: Vec<u8>, format: Base64Format) -> anyhow::Result<String> {
+    let encoded = match format {
+        Base64Format::Standard => STANDARD.encode(&data),
+        Base64Format::UrlSafe => URL_SAFE_NO_PAD.encode(&data),
+    };
+
+    Ok(encoded)
+}
+
+pub fn process_decode_data(input: &str, format: Base64Format) -> anyhow::Result<String> {
+    let input = input.trim();
+    let mut reader = get_reader(input)?;
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf)?;
+
+    //println!("buf: {}", String::from_utf8_lossy(&buf));
+    let decoded = match format {
+        Base64Format::Standard => STANDARD
+            .decode(&buf)
+            .map_err(|err| anyhow!("Failed to decode input: {}", err))?,
+        Base64Format::UrlSafe => URL_SAFE_NO_PAD
+            .decode(&buf)
+            .map_err(|err| anyhow!("Failed to decode iinput by urlSafe {}", err))?,
+    };
+    let decoded = String::from_utf8_lossy(&decoded).to_string();
+
+    println!("decoded data: {}", &decoded);
+
+    Ok(decoded)
 }
 
 pub fn process_decode(input: &str, format: Base64Format) -> anyhow::Result<()> {

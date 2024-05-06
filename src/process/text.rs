@@ -1,16 +1,31 @@
 use crate::{process_genpwd, TextSignFormat};
-use anyhow::Result;
+use anyhow::{Context, Result};
+use chacha20poly1305::{
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+    ChaCha20Poly1305, Nonce,
+};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use std::{collections::HashMap, io::Read};
 
-use rand::rngs::OsRng;
+//use rand::rngs::OsRng;
 
+// Sign for text
 pub trait TextSigner {
     fn sign(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
 }
 
 pub trait TextVerifier {
     fn verify(&self, reader: &mut dyn Read, sig: &[u8]) -> Result<bool>;
+}
+
+// encrypt
+pub trait Encryptor {
+    fn encrypt(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
+    fn decrypt(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
+}
+
+pub struct EncryXChaCha20Poly1305 {
+    cipher: ChaCha20Poly1305,
 }
 
 pub struct Blake3 {
@@ -69,6 +84,50 @@ impl TextVerifier for Ed25519Verifier {
         let sig = (&sig[..64]).try_into()?;
         let signature = Signature::from_bytes(sig);
         Ok(self.key.verify(&buf, &signature).is_ok())
+    }
+}
+
+impl EncryXChaCha20Poly1305 {
+    pub fn try_new() -> anyhow::Result<Self> {
+        let key = ChaCha20Poly1305::generate_key(&mut OsRng);
+        let cipher = ChaCha20Poly1305::new(&key);
+        Ok(Self { cipher })
+    }
+}
+
+impl Encryptor for EncryXChaCha20Poly1305 {
+    fn encrypt(&self, reader: &mut dyn Read) -> anyhow::Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        reader
+            .read_to_end(&mut buf)
+            .with_context(|| "fail to read data")?;
+
+        //nonce
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let en_data = match self.cipher.encrypt(&nonce, buf.as_slice()) {
+            Ok(data) => data,
+            Err(err) => return Err(anyhow::Error::msg(format!("CryptoError: {}", err))),
+        };
+
+        //println!("encrypt-buf: {:?}", String::from_utf8_lossy(&en_data));
+        //let nonce_s = nonce.into
+        Ok(en_data)
+    }
+
+    fn decrypt(&self, reader: &mut dyn Read) -> anyhow::Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        reader
+            .read_to_end(&mut buf)
+            .with_context(|| "failed to read data")?;
+
+        let ciphertext = buf.as_slice();
+        let nonce = Nonce::from_slice(&ciphertext[..12]);
+        let dec_data = match self.cipher.decrypt(nonce, ciphertext) {
+            Ok(data) => data,
+            Err(err) => return Err(anyhow::Error::msg(format!("descrtoError: {}", err))),
+        };
+
+        Ok(dec_data)
     }
 }
 
@@ -148,12 +207,47 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
     }
 }
-/*
+
+pub fn process_text_encypt(reader: &mut dyn Read) -> Result<Vec<u8>> {
+    let xcha = EncryXChaCha20Poly1305::try_new()?;
+    xcha.encrypt(reader)
+}
+
+pub fn process_text_decypt(reader: &mut dyn Read) -> Result<Vec<u8>> {
+    let xcha = EncryXChaCha20Poly1305::try_new()?;
+    xcha.decrypt(reader)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
     //use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    //const KEY: &[u8] = include_bytes!("../../fixtures/tmp.txt"); // open when test
+    const KEY: &[u8] = &[1]; // error
 
+    #[test]
+    fn test_encrypt_decrypt() -> Result<()> {
+        let cipher = EncryXChaCha20Poly1305::try_new()?;
+
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let en_data = match cipher.cipher.encrypt(&nonce, KEY) {
+            Ok(data) => data,
+            Err(err) => return Err(anyhow::Error::msg(format!("CryptoError: {}", err))),
+        };
+        //println!("origin-content: {}", String::from_utf8_lossy(&KEY));
+        //println!("encrypt-result: {}", String::from_utf8_lossy(&en_data));
+
+        //let nonce_dec = Nonce::from_slice(&en_data.as_slice()[..12]);
+        let ret = match cipher.cipher.decrypt(&nonce, en_data.as_slice()) {
+            Ok(edata) => edata,
+            Err(err) => return Err(anyhow::Error::msg(format!("DecryptError: {}", err))),
+        };
+
+        println!("descrypt-result: {}", String::from_utf8_lossy(&ret));
+
+        Ok(())
+    }
+
+    /*
     const KEY: &[u8] = include_bytes!("../../fixtures/blake3.txt");
 
     #[test]
@@ -168,5 +262,5 @@ mod tests {
 
         Ok(())
     }
+    */
 }
-*/

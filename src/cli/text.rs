@@ -1,11 +1,12 @@
-use super::{verify_file, verify_path};
+use super::{verify_file, verify_path, Base64Format};
 use crate::{
-    get_content, get_reader, process_text_key_generate, process_text_sign, process_text_verify,
+    get_content, get_reader, process_decode_data, process_encode_data, process_text_decypt,
+    process_text_encypt, process_text_key_generate, process_text_sign, process_text_verify,
     CmdExecutor,
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use clap::Parser;
-use std::{fmt, path::PathBuf, str::FromStr};
+use std::{fmt, io::Cursor, path::PathBuf, str::FromStr};
 use tokio::fs;
 
 #[derive(Debug, Parser)]
@@ -16,6 +17,10 @@ pub enum TextSubCommand {
     Verify(TextVeriryOpts),
     #[command(about = "generate a random blake3 or 15519 key pair")]
     Generate(KeyGenerateOpts),
+    #[command(about = "encrypt text")]
+    Encrypt(TextEncryptOpts),
+    #[command(about = "decrypt content")]
+    Decrypt(TextDecryptOpts),
 }
 
 #[derive(Debug, Parser)]
@@ -46,6 +51,18 @@ pub struct KeyGenerateOpts {
     pub format: TextSignFormat,
     #[arg(short, long, value_parser = verify_path)]
     pub output_path: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+pub struct TextEncryptOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
+}
+
+#[derive(Debug, Parser)]
+pub struct TextDecryptOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,6 +109,8 @@ impl CmdExecutor for TextSubCommand {
             TextSubCommand::Sign(opts) => opts.execute().await,
             TextSubCommand::Verify(opts) => opts.execute().await,
             TextSubCommand::Generate(opts) => opts.execute().await,
+            TextSubCommand::Encrypt(opts) => opts.execute().await,
+            TextSubCommand::Decrypt(opts) => opts.execute().await,
         }
     }
 }
@@ -131,6 +150,42 @@ impl CmdExecutor for KeyGenerateOpts {
         for (k, v) in mkey {
             fs::write(self.output_path.join(k), v).await?;
         }
+
+        Ok(())
+    }
+}
+
+impl CmdExecutor for TextEncryptOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let mut reader = get_reader(&self.input)?;
+        let ret = process_text_encypt(&mut reader)?;
+
+        // use base64 to mix
+        let data = process_encode_data(ret, Base64Format::UrlSafe)?;
+
+        println!("{}", data);
+
+        Ok(())
+    }
+}
+
+impl CmdExecutor for TextDecryptOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let result = match process_decode_data(&self.input, Base64Format::UrlSafe) {
+            Ok(data) => data,
+            Err(err) => {
+                return Err(anyhow::Error::msg(format!(
+                    "process_decode_data error: {}",
+                    err
+                )))
+            }
+        };
+        let buff: Vec<u8> = result.into_bytes();
+        let mut cursor = Cursor::new(buff);
+
+        let ret = process_text_decypt(&mut cursor)?;
+
+        println!("{}", String::from_utf8_lossy(&ret));
 
         Ok(())
     }

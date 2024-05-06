@@ -28,11 +28,11 @@ pub enum SubCommand {
     Csv(CsvOpts),
     #[command(name = "genpwd", about = "generate a random password")]
     GenPWD(GenPWDOpts),
-    #[command(subcommand)]
+    #[command(subcommand, about = "base64 encode data")]
     Base64(Base64SubCommand),
-    #[command(subcommand)]
+    #[command(subcommand, about = "text sign or verify | encrypt-descrypt")]
     Text(TextSubCommand),
-    #[command(subcommand)]
+    #[command(subcommand, about = "Http serve")]
     Http(HttpSubCommand),
 }
 
